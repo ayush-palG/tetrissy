@@ -13,8 +13,8 @@
 #define BOARD_WIDTH  ((float) SCREEN_WIDTH  / CELL_WIDTH)
 #define BOARD_HEIGHT ((float) SCREEN_HEIGHT / CELL_HEIGHT)
 
-#define MAX_RECTS_IN_BLOCK 4
 #define MIN_RECTS_IN_BLOCK 3
+#define MAX_RECTS_IN_BLOCK 4
 
 #define BACKGROUND_COLOR     0x181818FF
 #define RECT_COLOR           0xFFFFFFFF
@@ -135,7 +135,7 @@ void generate_random_block_set(Block *block)
 Block generate_boundaries(void)
 {
   Block boundary_block;
-  boundary_block.count = 2 * (BOARD_WIDTH + BOARD_HEIGHT);
+  boundary_block.count = BOARD_WIDTH + (2 * BOARD_HEIGHT);
   boundary_block.rects = malloc(sizeof(*(boundary_block.rects)) * boundary_block.count);
 
   int index = 0;
@@ -173,12 +173,20 @@ void init_block(Block *block)
 void block_step(Block *block)
 {
   for (size_t i = 0; i < block->count; ++i) {
-    block->rects[i].y += CELL_HEIGHT;
+    if (block->rects[i].y >= (SCREEN_HEIGHT - CELL_HEIGHT)) return;
+  }
+
+  for (size_t i = 0; i < block->count; ++i) {
+     block->rects[i].y += CELL_HEIGHT;
   }
 }
 
 void block_move_left(Block *block)
 {
+  for (size_t i = 0; i < block->count; ++i) {
+    if (block->rects[i].x <= 0) return;
+  }
+
   for (size_t i = 0; i < block->count; ++i) {
     block->rects[i].x -= CELL_WIDTH;
   }
@@ -186,6 +194,10 @@ void block_move_left(Block *block)
 
 void block_move_right(Block *block)
 {
+  for (size_t i = 0; i < block->count; ++i) {
+    if (block->rects[i].x >= (SCREEN_WIDTH - CELL_WIDTH)) return;
+  }
+
   for (size_t i = 0; i < block->count; ++i) {
     block->rects[i].x += CELL_WIDTH;
   }

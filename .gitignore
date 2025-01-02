@@ -1,4 +1,9 @@
+# the output application file
 tetrissy
 
 # Ignore all the temporary buffers
 *~
+
+# Ignore my thought process file
+Thought Process.md
+
