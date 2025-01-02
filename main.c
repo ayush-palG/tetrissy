@@ -78,6 +78,46 @@ void render_grids(SDL_Renderer *renderer)
   }
 }
 
+int random_int_range(int low, int high)
+{
+  return (rand() % (high-low)) + low;
+}
+
+Dir random_dir(void)
+{
+  return (Dir) random_int_range(0, 4);
+}
+
+void generate_random_block(SDL_Rect *rects)
+{
+  int x = 120;
+  int y = 120;
+  for (size_t i = 0; i < 4; ++i) {
+    rects[i] = (SDL_Rect) {x, y, CELL_WIDTH, CELL_HEIGHT};
+    x += dirs[random_dir()].x * CELL_WIDTH;
+    y += dirs[random_dir()].y * CELL_HEIGHT;
+  }
+
+  SDL_Delay(1000);
+}
+
+void generate_blocks(SDL_Renderer *renderer)
+{
+  secc(SDL_SetRenderDrawColor(renderer, HEX_COLOR(BLOCK_COLOR)));
+
+  // TODO: x and y coordinates depends on the random direction
+  // and for this, we could use the Coord dirs array for direction
+  // and we have to maybe implement the is_cell_empty to check if
+  // the cell we want to move is either empty or not.
+  SDL_Rect rects[4];
+  generate_random_block(rects);
+  secc(SDL_RenderFillRects(renderer, rects, 4));
+
+  // Boundary for the rects
+  secc(SDL_SetRenderDrawColor(renderer, HEX_COLOR(BLOCK_BOUNDARY_COLOR)));
+  secc(SDL_RenderDrawRects(renderer, rects, 4));
+}
+
 int main(int argc, char *argv[])
 {
   srand(time(0));
@@ -106,10 +146,8 @@ int main(int argc, char *argv[])
     secc(SDL_SetRenderDrawColor(renderer, HEX_COLOR(BACKGROUND_COLOR)));
     secc(SDL_RenderClear(renderer));
     
-    secc(SDL_SetRenderDrawColor(renderer, HEX_COLOR(RECT_COLOR)));
-    SDL_Rect rect = {20, 20, 100, 100};
-    secc(SDL_RenderFillRect(renderer, &rect));
     render_grids(renderer);
+    generate_blocks(renderer);
     
     SDL_RenderPresent(renderer);
   }
