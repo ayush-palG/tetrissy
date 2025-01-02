@@ -123,12 +123,35 @@ void generate_random_block_set(Block *block)
     } else {
       --i;
     }
+    
     if (random_int_range(0, 2)) {
       pos.x += dirs[random_dir()].x * CELL_WIDTH;
     } else {
       pos.y += dirs[random_dir()].y * CELL_HEIGHT;
     }
   }
+}
+
+Block generate_boundaries(void)
+{
+  Block boundary_block;
+  boundary_block.count = 2 * (BOARD_WIDTH + BOARD_HEIGHT);
+  boundary_block.rects = malloc(sizeof(*(boundary_block.rects)) * boundary_block.count);
+
+  int index = 0;
+  for (size_t i = 0; i < BOARD_WIDTH; ++i, ++index) {
+    boundary_block.rects[index] = (SDL_Rect) {i*CELL_WIDTH, SCREEN_HEIGHT, CELL_WIDTH, CELL_HEIGHT};
+  }
+  
+  for (size_t i = 0; i < BOARD_HEIGHT; ++i, ++index) {
+    boundary_block.rects[index] = (SDL_Rect) {-40, i*CELL_HEIGHT, CELL_WIDTH, CELL_HEIGHT};
+  }
+  
+  for (size_t i = 0; i < BOARD_HEIGHT; ++i, ++index) {
+    boundary_block.rects[index] = (SDL_Rect) {SCREEN_WIDTH, i*CELL_HEIGHT, CELL_WIDTH, CELL_HEIGHT};
+  }
+  
+  return boundary_block;
 }
 
 void render_block(SDL_Renderer *renderer, Block *block)
@@ -144,7 +167,9 @@ void init_block(Block *block)
 {
   block->count = random_int_range(MIN_RECTS_IN_BLOCK, MAX_RECTS_IN_BLOCK+1);
   block->rects = malloc(sizeof(*(block->rects))*block->count);
-  reset_block_rects(block);
+  reset_block_rects(block); // TODO: Check if it's required
+}
+
 }
 
 Block block;
@@ -164,9 +189,12 @@ int main(int argc, char *argv[])
   SDL_Renderer *renderer = secp(SDL_CreateRenderer(
 		   window, -1, SDL_RENDERER_ACCELERATED));
 
+  Block boundary_block = generate_boundaries();
+
   int quit = 0;
   while (!quit) {
     SDL_Event event;
+    
     while(SDL_PollEvent(&event)) {
       switch (event.type) {
       case SDL_QUIT: {
@@ -179,6 +207,7 @@ int main(int argc, char *argv[])
 	  reset_block_rects(&block);
 	  generate_random_block_set(&block);
 	} break;
+
 	case SDLK_q: {
 	  quit = 1;
 	} break;
@@ -190,6 +219,7 @@ int main(int argc, char *argv[])
     secc(SDL_SetRenderDrawColor(renderer, HEX_COLOR(BACKGROUND_COLOR)));
     secc(SDL_RenderClear(renderer));
 
+    render_block(renderer, &boundary_block);
     render_grids(renderer);
     render_block(renderer, &block);
     
