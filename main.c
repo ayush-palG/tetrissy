@@ -170,6 +170,25 @@ void init_block(Block *block)
   reset_block_rects(block); // TODO: Check if it's required
 }
 
+void block_step(Block *block)
+{
+  for (size_t i = 0; i < block->count; ++i) {
+    block->rects[i].y += CELL_HEIGHT;
+  }
+}
+
+void block_move_left(Block *block)
+{
+  for (size_t i = 0; i < block->count; ++i) {
+    block->rects[i].x -= CELL_WIDTH;
+  }
+}
+
+void block_move_right(Block *block)
+{
+  for (size_t i = 0; i < block->count; ++i) {
+    block->rects[i].x += CELL_WIDTH;
+  }
 }
 
 Block block;
@@ -190,6 +209,7 @@ int main(int argc, char *argv[])
 		   window, -1, SDL_RENDERER_ACCELERATED));
 
   Block boundary_block = generate_boundaries();
+  Uint32 dt = SDL_GetTicks();
 
   int quit = 0;
   while (!quit) {
@@ -211,6 +231,13 @@ int main(int argc, char *argv[])
 	case SDLK_q: {
 	  quit = 1;
 	} break;
+
+	case SDLK_a: {
+	  block_move_left(&block);
+	} break;
+	case SDLK_d: {
+	  block_move_right(&block);
+	} break;
 	}
       } break;
       }
@@ -224,6 +251,11 @@ int main(int argc, char *argv[])
     render_block(renderer, &block);
     
     SDL_RenderPresent(renderer);
+
+    if (SDL_GetTicks() - dt > 2000) {
+      block_step(&block);
+      dt = SDL_GetTicks();
+    }
   }
 
   SDL_Quit();
