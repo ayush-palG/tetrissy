@@ -37,9 +37,7 @@ typedef struct {
   int x, y;
 } Coord;
 
-typedef struct {
-  Coord coords[4];
-} Block;
+SDL_Rect rects[4];
 
 Coord dirs[4] = {
   {1,  0},
@@ -88,14 +86,42 @@ Dir random_dir(void)
   return (Dir) random_int_range(0, 4);
 }
 
-void generate_random_block(SDL_Rect *rects)
+int coord_equals(Coord a, Coord b)
 {
-  int x = 120;
-  int y = 120;
+  return a.x == b.x && a.y == b.y;
+}
+
+int is_cell_empty(SDL_Rect *rects, Coord pos)
+{
   for (size_t i = 0; i < 4; ++i) {
-    rects[i] = (SDL_Rect) {x, y, CELL_WIDTH, CELL_HEIGHT};
-    x += dirs[random_dir()].x * CELL_WIDTH;
-    y += dirs[random_dir()].y * CELL_HEIGHT;
+    Coord rect_coord = {rects[i].x, rects[i].y};
+    if (coord_equals(rect_coord, pos)) return 0;
+  }
+  
+  return 1;
+}
+
+void reset_block_rects(SDL_Rect *rects)
+{
+  for (size_t i = 0; i < 4; ++i) {
+    rects[i] = (SDL_Rect) {0,0,0,0};
+  }
+}
+
+void generate_random_block_set(SDL_Rect *rects)
+{
+  Coord pos = {120, 120};
+  for (size_t i = 0; i < 4; ++i) {
+    if (is_cell_empty(rects, pos)) {
+      rects[i] = (SDL_Rect) {pos.x, pos.y, CELL_WIDTH, CELL_HEIGHT};
+    } else {
+      --i;
+    }
+    if (random_int_range(0, 2)) {
+      pos.x += dirs[random_dir()].x * CELL_WIDTH;
+    } else {
+      pos.y += dirs[random_dir()].y * CELL_HEIGHT;
+    }
   }
 
   SDL_Delay(1000);
@@ -105,15 +131,10 @@ void generate_blocks(SDL_Renderer *renderer)
 {
   secc(SDL_SetRenderDrawColor(renderer, HEX_COLOR(BLOCK_COLOR)));
 
-  // TODO: x and y coordinates depends on the random direction
-  // and for this, we could use the Coord dirs array for direction
-  // and we have to maybe implement the is_cell_empty to check if
-  // the cell we want to move is either empty or not.
-  SDL_Rect rects[4];
-  generate_random_block(rects);
+  reset_block_rects(rects);
+  generate_random_block_set(rects);
   secc(SDL_RenderFillRects(renderer, rects, 4));
 
-  // Boundary for the rects
   secc(SDL_SetRenderDrawColor(renderer, HEX_COLOR(BLOCK_BOUNDARY_COLOR)));
   secc(SDL_RenderDrawRects(renderer, rects, 4));
 }
@@ -139,6 +160,13 @@ int main(int argc, char *argv[])
       switch (event.type) {
       case SDL_QUIT: {
 	quit = 1;
+      } break;
+      case SDL_KEYDOWN: {
+	switch(event.key.keysym.sym) {
+	case SDLK_r: {
+	  
+	} break;
+	}
       } break;
       }
     }
