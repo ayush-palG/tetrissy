@@ -1,3 +1,4 @@
+#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
@@ -13,15 +14,15 @@
 #define BOARD_WIDTH  ((float) SCREEN_WIDTH  / CELL_WIDTH)
 #define BOARD_HEIGHT ((float) SCREEN_HEIGHT / CELL_HEIGHT)
 
-#define MIN_RECTS_IN_BLOCK 3
-#define MAX_RECTS_IN_BLOCK 4
+#define MIN_RECTS_IN_TILE 3
+#define MAX_RECTS_IN_TILE 4
 
 #define BACKGROUND_COLOR     0x181818FF
 #define RECT_COLOR           0xFFFFFFFF
 #define RECT_BOUNDARY_COLOR  0x666666FF
 #define GRID_COLOR           0x444444FF
-#define BLOCK_COLOR          0x46F46FFF
-#define BLOCK_BOUNDARY_COLOR 0x30B13DFF
+#define TILE_COLOR          0x46F46FFF
+#define TILE_BOUNDARY_COLOR 0x30B13DFF
 
 #define HEX_COLOR(hex)                 \
   ((hex) >> (3*8)) & 0xFF,	       \
@@ -43,6 +44,11 @@ typedef struct {
 typedef struct {
   int count;
   SDL_Rect *rects;
+} Tile;
+
+typedef struct block {
+  Tile *tile;
+  struct block *next_tile;
 } Block;
 
 Coord dirs[4] = {
@@ -51,6 +57,8 @@ Coord dirs[4] = {
   {-1, 0},
   {0,  1},
 };
+
+Block *last_block = NULL;
 
 void secc(int code)
 {
@@ -97,29 +105,29 @@ int coord_equals(Coord a, Coord b)
   return a.x == b.x && a.y == b.y;
 }
 
-int is_cell_empty(Block *block, Coord pos)
+int is_cell_empty(Tile *tile, Coord pos)
 {
-  for (size_t i = 0; i < block->count; ++i) {
-    Coord rect_coord = {block->rects[i].x, block->rects[i].y};
+  for (size_t i = 0; i < tile->count; ++i) {
+    Coord rect_coord = {tile->rects[i].x, tile->rects[i].y};
     if (coord_equals(rect_coord, pos)) return 0;
   }
   
   return 1;
 }
 
-void reset_block_rects(Block *block)
+void reset_tile_rects(Tile *tile)
 {
-  for (size_t i = 0; i < block->count; ++i) {
-    block->rects[i] = (SDL_Rect) {0,0,0,0};
+  for (size_t i = 0; i < tile->count; ++i) {
+    tile->rects[i] = (SDL_Rect) {0,0,0,0};
   }
 }
 
-void generate_random_block_set(Block *block)
+void generate_random_tile_set(Tile *tile)
 {
-  Coord pos = {120, 120};
-  for (size_t i = 0; i < block->count; ++i) {
-    if (is_cell_empty(block, pos)) {
-      block->rects[i] = (SDL_Rect) {pos.x, pos.y, CELL_WIDTH, CELL_HEIGHT};
+  Coord pos = {40*random_int_range(3, 7), 120};
+  for (size_t i = 0; i < tile->count; ++i) {
+    if (is_cell_empty(tile, pos)) {
+      tile->rects[i] = (SDL_Rect) {pos.x, pos.y, CELL_WIDTH, CELL_HEIGHT};
     } else {
       --i;
     }
@@ -132,83 +140,141 @@ void generate_random_block_set(Block *block)
   }
 }
 
-Block generate_boundaries(void)
+Tile generate_boundaries(void)
 {
-  Block boundary_block;
-  boundary_block.count = BOARD_WIDTH + (2 * BOARD_HEIGHT);
-  boundary_block.rects = malloc(sizeof(*(boundary_block.rects)) * boundary_block.count);
+  Tile boundary_tile;
+  boundary_tile.count = BOARD_WIDTH + (2 * BOARD_HEIGHT);
+  boundary_tile.rects = malloc(sizeof(*(boundary_tile.rects)) * boundary_tile.count);
 
   int index = 0;
   for (size_t i = 0; i < BOARD_WIDTH; ++i, ++index) {
-    boundary_block.rects[index] = (SDL_Rect) {i*CELL_WIDTH, SCREEN_HEIGHT, CELL_WIDTH, CELL_HEIGHT};
+    boundary_tile.rects[index] = (SDL_Rect) {i*CELL_WIDTH, SCREEN_HEIGHT, CELL_WIDTH, CELL_HEIGHT};
   }
   
   for (size_t i = 0; i < BOARD_HEIGHT; ++i, ++index) {
-    boundary_block.rects[index] = (SDL_Rect) {-40, i*CELL_HEIGHT, CELL_WIDTH, CELL_HEIGHT};
+    boundary_tile.rects[index] = (SDL_Rect) {-40, i*CELL_HEIGHT, CELL_WIDTH, CELL_HEIGHT};
   }
   
   for (size_t i = 0; i < BOARD_HEIGHT; ++i, ++index) {
-    boundary_block.rects[index] = (SDL_Rect) {SCREEN_WIDTH, i*CELL_HEIGHT, CELL_WIDTH, CELL_HEIGHT};
+    boundary_tile.rects[index] = (SDL_Rect) {SCREEN_WIDTH, i*CELL_HEIGHT, CELL_WIDTH, CELL_HEIGHT};
   }
   
-  return boundary_block;
+  return boundary_tile;
+}
+
+void render_tile(SDL_Renderer *renderer, Tile *tile)
+{
+  secc(SDL_SetRenderDrawColor(renderer, HEX_COLOR(TILE_COLOR)));
+  secc(SDL_RenderFillRects(renderer, tile->rects, tile->count));
+
+  secc(SDL_SetRenderDrawColor(renderer, HEX_COLOR(TILE_BOUNDARY_COLOR)));
+  secc(SDL_RenderDrawRects(renderer, tile->rects, tile->count));
+}
+
+Tile *init_tile(void)
+{
+  Tile *tile = (Tile *) malloc(sizeof(Tile));
+  tile->count = random_int_range(MIN_RECTS_IN_TILE, MAX_RECTS_IN_TILE+1);
+  tile->rects = malloc(sizeof(*(tile->rects))*tile->count);
+  reset_tile_rects(tile); // TODO: Check if it's required
+  return tile;
+}
+
+void push_block(Block **block)
+{
+  Block *new_block = (Block *) malloc(sizeof(Block));
+  new_block->tile = init_tile();
+  new_block->next_tile = NULL;
+
+  if (*block == NULL) {
+    *block = new_block;
+  } else {
+    Block *last_block = *block;
+    while (last_block->next_tile) {
+      last_block = last_block->next_tile;
+    }
+    last_block->next_tile = new_block;
+  }
+}
+
+Block *traverse_block(Block *block)
+{
+  assert(block);
+  while (block->next_tile) {
+    block = block->next_tile;
+  }
+  return block;
+}
+
+void free_block(Block *block)
+{
+  assert(block);
+  block = block->next_tile;
+  
+  Block *next_block = NULL;
+  while(block) {
+    next_block = block->next_tile;
+    free(block);
+    block = next_block;
+  }
 }
 
 void render_block(SDL_Renderer *renderer, Block *block)
 {
-  secc(SDL_SetRenderDrawColor(renderer, HEX_COLOR(BLOCK_COLOR)));
-  secc(SDL_RenderFillRects(renderer, block->rects, block->count));
-
-  secc(SDL_SetRenderDrawColor(renderer, HEX_COLOR(BLOCK_BOUNDARY_COLOR)));
-  secc(SDL_RenderDrawRects(renderer, block->rects, block->count));
+  assert(block);
+  
+  while (block) {
+    render_tile(renderer, block->tile);
+    block = block->next_tile;
+  }
 }
 
-void init_block(Block *block)
+void tile_step(Block *block, Tile *tile)
 {
-  block->count = random_int_range(MIN_RECTS_IN_BLOCK, MAX_RECTS_IN_BLOCK+1);
-  block->rects = malloc(sizeof(*(block->rects))*block->count);
-  reset_block_rects(block); // TODO: Check if it's required
+  for (size_t i = 0; i < tile->count; ++i) {
+    if (tile->rects[i].y >= (SCREEN_HEIGHT - CELL_HEIGHT)) {
+      push_block(&block);
+      last_block = traverse_block(block);
+      generate_random_tile_set(last_block->tile);
+      return;
+    }
+  }
+
+  for (size_t i = 0; i < tile->count; ++i) {
+     tile->rects[i].y += CELL_HEIGHT;
+  }
 }
 
-void block_step(Block *block)
+void tile_move_left(Tile *tile)
 {
-  for (size_t i = 0; i < block->count; ++i) {
-    if (block->rects[i].y >= (SCREEN_HEIGHT - CELL_HEIGHT)) return;
+  for (size_t i = 0; i < tile->count; ++i) {
+    if (tile->rects[i].x <= 0) return;
   }
 
-  for (size_t i = 0; i < block->count; ++i) {
-     block->rects[i].y += CELL_HEIGHT;
+  for (size_t i = 0; i < tile->count; ++i) {
+    tile->rects[i].x -= CELL_WIDTH;
   }
 }
 
-void block_move_left(Block *block)
+void tile_move_right(Tile *tile)
 {
-  for (size_t i = 0; i < block->count; ++i) {
-    if (block->rects[i].x <= 0) return;
+  for (size_t i = 0; i < tile->count; ++i) {
+    if (tile->rects[i].x >= (SCREEN_WIDTH - CELL_WIDTH)) return;
   }
 
-  for (size_t i = 0; i < block->count; ++i) {
-    block->rects[i].x -= CELL_WIDTH;
-  }
-}
-
-void block_move_right(Block *block)
-{
-  for (size_t i = 0; i < block->count; ++i) {
-    if (block->rects[i].x >= (SCREEN_WIDTH - CELL_WIDTH)) return;
-  }
-
-  for (size_t i = 0; i < block->count; ++i) {
-    block->rects[i].x += CELL_WIDTH;
+  for (size_t i = 0; i < tile->count; ++i) {
+    tile->rects[i].x += CELL_WIDTH;
   }
 }
 
-Block block;
+Block *block = NULL;
 
 int main(int argc, char *argv[])
 {
   srand(time(0));
-  init_block(&block);
+  push_block(&block);
+  last_block = traverse_block(block);
+  generate_random_tile_set(last_block->tile);
   
   secc(SDL_Init(SDL_INIT_VIDEO));
 
@@ -220,7 +286,7 @@ int main(int argc, char *argv[])
   SDL_Renderer *renderer = secp(SDL_CreateRenderer(
 		   window, -1, SDL_RENDERER_ACCELERATED));
 
-  Block boundary_block = generate_boundaries();
+  Tile boundary_tile = generate_boundaries();
   Uint32 dt = SDL_GetTicks();
 
   int quit = 0;
@@ -236,8 +302,10 @@ int main(int argc, char *argv[])
       case SDL_KEYDOWN: {
 	switch(event.key.keysym.sym) {
 	case SDLK_r: {
-	  reset_block_rects(&block);
-	  generate_random_block_set(&block);
+	  //free_block(block);
+	  //push_block(&block);
+	  //last_block = traverse_block(block);
+	  //generate_random_tile_set(last_block->tile);
 	} break;
 
 	case SDLK_q: {
@@ -245,10 +313,12 @@ int main(int argc, char *argv[])
 	} break;
 
 	case SDLK_a: {
-	  block_move_left(&block);
+	  last_block = traverse_block(block);
+	  tile_move_left(block->tile);
 	} break;
 	case SDLK_d: {
-	  block_move_right(&block);
+	  last_block = traverse_block(block);
+	  tile_move_right(block->tile);
 	} break;
 	}
       } break;
@@ -258,14 +328,16 @@ int main(int argc, char *argv[])
     secc(SDL_SetRenderDrawColor(renderer, HEX_COLOR(BACKGROUND_COLOR)));
     secc(SDL_RenderClear(renderer));
 
-    render_block(renderer, &boundary_block);
     render_grids(renderer);
-    render_block(renderer, &block);
+    render_tile(renderer, &boundary_tile);
+    
+    render_block(renderer, block);
     
     SDL_RenderPresent(renderer);
 
-    if (SDL_GetTicks() - dt > 2000) {
-      block_step(&block);
+    if (SDL_GetTicks() - dt > 500) {
+      last_block = traverse_block(block);
+      tile_step(block, last_block->tile);
       dt = SDL_GetTicks();
     }
   }
