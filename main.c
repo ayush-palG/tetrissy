@@ -77,19 +77,6 @@ void *secp(void *ptr)
   return ptr;
 }
 
-void render_grids(SDL_Renderer *renderer)
-{
-  secc(SDL_SetRenderDrawColor(renderer, HEX_COLOR(GRID_COLOR)));
-
-  for (size_t x = 0; x < BOARD_WIDTH; ++x) {
-    secc(SDL_RenderDrawLine(renderer, x*CELL_WIDTH, 0, x*CELL_WIDTH, SCREEN_HEIGHT));
-  }
-  
-  for (size_t y = 0; y < BOARD_HEIGHT; ++y) {
-    secc(SDL_RenderDrawLine(renderer, 0, y*CELL_HEIGHT, SCREEN_WIDTH, y*CELL_HEIGHT));
-  }
-}
-
 int random_int_range(int low, int high)
 {
   return (rand() % (high-low)) + low;
@@ -103,6 +90,19 @@ Dir random_dir(void)
 int coord_equals(Coord a, Coord b)
 {
   return a.x == b.x && a.y == b.y;
+}
+
+void render_grids(SDL_Renderer *renderer)
+{
+  secc(SDL_SetRenderDrawColor(renderer, HEX_COLOR(GRID_COLOR)));
+
+  for (size_t x = 0; x < BOARD_WIDTH; ++x) {
+    secc(SDL_RenderDrawLine(renderer, x*CELL_WIDTH, 0, x*CELL_WIDTH, SCREEN_HEIGHT));
+  }
+  
+  for (size_t y = 0; y < BOARD_HEIGHT; ++y) {
+    secc(SDL_RenderDrawLine(renderer, 0, y*CELL_HEIGHT, SCREEN_WIDTH, y*CELL_HEIGHT));
+  }
 }
 
 int is_cell_empty(Tile *tile, Coord pos)
@@ -245,6 +245,20 @@ void tile_step(Block *block, Tile *tile)
   }
 }
 
+void down_to_earth(Tile *tile)
+{
+  int distance = SCREEN_HEIGHT;
+  for (size_t i = 0; i < tile->count; ++i) {
+    if ((SCREEN_HEIGHT - tile->rects[i].y) < distance) {
+      distance = SCREEN_HEIGHT - tile->rects[i].y;
+    }
+  }
+
+  for (size_t i = 0; i < tile->count; ++i) {
+    tile->rects[i].y += distance - CELL_HEIGHT;
+  }
+}
+
 void tile_move_left(Tile *tile)
 {
   for (size_t i = 0; i < tile->count; ++i) {
@@ -314,11 +328,15 @@ int main(int argc, char *argv[])
 
 	case SDLK_a: {
 	  last_block = traverse_block(block);
-	  tile_move_left(block->tile);
+	  tile_move_left(last_block->tile);
 	} break;
 	case SDLK_d: {
 	  last_block = traverse_block(block);
-	  tile_move_right(block->tile);
+	  tile_move_right(last_block->tile);
+	} break;
+	case SDLK_s: {
+	  last_block = traverse_block(block);
+	  down_to_earth(last_block->tile);
 	} break;
 	}
       } break;
