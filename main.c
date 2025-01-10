@@ -18,11 +18,7 @@
 #define MAX_RECTS_IN_TILE 4
 
 #define BACKGROUND_COLOR     0x181818FF
-#define RECT_COLOR           0xFFFFFFFF
-#define RECT_BOUNDARY_COLOR  0x666666FF
 #define GRID_COLOR           0x444444FF
-#define TILE_COLOR          0x46F46FFF
-#define TILE_BOUNDARY_COLOR 0x30B13DFF
 
 #define HEX_COLOR(hex)                 \
   ((hex) >> (3*8)) & 0xFF,	       \
@@ -37,19 +33,29 @@ typedef enum {
   DIR_BOTTOM,
 } Dir;
 
+typedef enum {
+  GREEN  = 0x2C6E49FF,
+  ORANGE = 0xFF8811FF,
+  YELLOW = 0xFCFC62FF,
+  ERIN   = 0x53FF45FF,
+  PURPLE = 0x785589FF,
+  GRAY   = 0xAAABBCFF
+} Color;
+
 typedef struct {
   int x, y;
 } Coord;
 
 typedef struct {
   int count;
-  SDL_Rect *rects;
+  Color color;
+  SDL_Rect *blocks;
 } Tile;
 
-typedef struct block {
+typedef struct tile_group {
   Tile *tile;
-  struct block *next_tile;
-} Block;
+  struct tile_group *next_tile;
+} Tile_Group;
 
 Coord dirs[4] = {
   {1,  0},
@@ -58,7 +64,7 @@ Coord dirs[4] = {
   {0,  1},
 };
 
-Block *last_block = NULL;
+Tile_Group *last_tile = NULL;
 
 void secc(int code)
 {
@@ -87,6 +93,12 @@ Dir random_dir(void)
   return (Dir) random_int_range(0, 4);
 }
 
+Color random_color(void)
+{
+  Color colors[] = {GREEN, ORANGE, YELLOW, ERIN, PURPLE, GRAY};
+  return colors[random_int_range(0, 6)];
+}
+
 int coord_equals(Coord a, Coord b)
 {
   return a.x == b.x && a.y == b.y;
@@ -108,7 +120,7 @@ void render_grids(SDL_Renderer *renderer)
 int is_cell_empty(Tile *tile, Coord pos)
 {
   for (size_t i = 0; i < tile->count; ++i) {
-    Coord rect_coord = {tile->rects[i].x, tile->rects[i].y};
+    Coord rect_coord = {tile->blocks[i].x, tile->blocks[i].y};
     if (coord_equals(rect_coord, pos)) return 0;
   }
   
@@ -118,7 +130,7 @@ int is_cell_empty(Tile *tile, Coord pos)
 void reset_tile_rects(Tile *tile)
 {
   for (size_t i = 0; i < tile->count; ++i) {
-    tile->rects[i] = (SDL_Rect) {0,0,0,0};
+    tile->blocks[i] = (SDL_Rect) {0,0,0,0};
   }
 }
 
@@ -127,7 +139,7 @@ void generate_random_tile_set(Tile *tile)
   Coord pos = {40*random_int_range(3, 7), 120};
   for (size_t i = 0; i < tile->count; ++i) {
     if (is_cell_empty(tile, pos)) {
-      tile->rects[i] = (SDL_Rect) {pos.x, pos.y, CELL_WIDTH, CELL_HEIGHT};
+      tile->blocks[i] = (SDL_Rect) {pos.x, pos.y, CELL_WIDTH, CELL_HEIGHT};
     } else {
       --i;
     }
@@ -144,19 +156,19 @@ Tile generate_boundaries(void)
 {
   Tile boundary_tile;
   boundary_tile.count = BOARD_WIDTH + (2 * BOARD_HEIGHT);
-  boundary_tile.rects = malloc(sizeof(*(boundary_tile.rects)) * boundary_tile.count);
+  boundary_tile.blocks = malloc(sizeof(*(boundary_tile.blocks)) * boundary_tile.count);
 
   int index = 0;
   for (size_t i = 0; i < BOARD_WIDTH; ++i, ++index) {
-    boundary_tile.rects[index] = (SDL_Rect) {i*CELL_WIDTH, SCREEN_HEIGHT, CELL_WIDTH, CELL_HEIGHT};
+    boundary_tile.blocks[index] = (SDL_Rect) {i*CELL_WIDTH, SCREEN_HEIGHT, CELL_WIDTH, CELL_HEIGHT};
   }
   
   for (size_t i = 0; i < BOARD_HEIGHT; ++i, ++index) {
-    boundary_tile.rects[index] = (SDL_Rect) {-40, i*CELL_HEIGHT, CELL_WIDTH, CELL_HEIGHT};
+    boundary_tile.blocks[index] = (SDL_Rect) {-40, i*CELL_HEIGHT, CELL_WIDTH, CELL_HEIGHT};
   }
   
   for (size_t i = 0; i < BOARD_HEIGHT; ++i, ++index) {
-    boundary_tile.rects[index] = (SDL_Rect) {SCREEN_WIDTH, i*CELL_HEIGHT, CELL_WIDTH, CELL_HEIGHT};
+    boundary_tile.blocks[index] = (SDL_Rect) {SCREEN_WIDTH, i*CELL_HEIGHT, CELL_WIDTH, CELL_HEIGHT};
   }
   
   return boundary_tile;
@@ -164,46 +176,48 @@ Tile generate_boundaries(void)
 
 void render_tile(SDL_Renderer *renderer, Tile *tile)
 {
-  secc(SDL_SetRenderDrawColor(renderer, HEX_COLOR(TILE_COLOR)));
-  secc(SDL_RenderFillRects(renderer, tile->rects, tile->count));
+  secc(SDL_SetRenderDrawColor(renderer, HEX_COLOR(tile->color)));
+  secc(SDL_RenderFillRects(renderer, tile->blocks, tile->count));
 
-  secc(SDL_SetRenderDrawColor(renderer, HEX_COLOR(TILE_BOUNDARY_COLOR)));
-  secc(SDL_RenderDrawRects(renderer, tile->rects, tile->count));
+  secc(SDL_SetRenderDrawColor(renderer, HEX_COLOR(GRID_COLOR)));
+  secc(SDL_RenderDrawRects(renderer, tile->blocks, tile->count));
 }
 
 Tile *init_tile(void)
 {
   Tile *tile = (Tile *) malloc(sizeof(Tile));
   tile->count = random_int_range(MIN_RECTS_IN_TILE, MAX_RECTS_IN_TILE+1);
-  tile->rects = malloc(sizeof(*(tile->rects))*tile->count);
+  tile->color = random_color();
+  tile->blocks = malloc(sizeof(*(tile->blocks))*tile->count);
   reset_tile_rects(tile); // TODO: Check if it's required
   return tile;
 }
 
 void push_block(Block **block)
+void push_tile_group(Tile_Group **tile_group)
 {
-  Block *new_block = (Block *) malloc(sizeof(Block));
-  new_block->tile = init_tile();
-  new_block->next_tile = NULL;
+  Tile_Group *new_tile_group = (Tile_Group *) malloc(sizeof(Tile_Group));
+  new_tile_group->tile = init_tile();
+  new_tile_group->next_tile = NULL;
 
-  if (*block == NULL) {
-    *block = new_block;
+  if (*tile_group == NULL) {
+    *tile_group = new_tile_group;
   } else {
-    Block *last_block = *block;
-    while (last_block->next_tile) {
-      last_block = last_block->next_tile;
+    last_tile = *tile_group;
+    while (last_tile->next_tile) {
+      last_tile = last_tile->next_tile;
     }
-    last_block->next_tile = new_block;
+    last_tile->next_tile = new_tile_group;
   }
 }
 
-Block *traverse_block(Block *block)
+Tile_Group *traverse_tile_group(Tile_Group *tile_group)
 {
-  assert(block);
-  while (block->next_tile) {
-    block = block->next_tile;
+  assert(tile_group);
+  while (tile_group->next_tile) {
+    tile_group = tile_group->next_tile;
   }
-  return block;
+  return tile_group;
 }
 
 void free_block(Block *block)
@@ -219,29 +233,29 @@ void free_block(Block *block)
   }
 }
 
-void render_block(SDL_Renderer *renderer, Block *block)
+void render_tile_group(SDL_Renderer *renderer, Tile_Group *tile_group)
 {
-  assert(block);
+  assert(tile_group);
   
-  while (block) {
-    render_tile(renderer, block->tile);
-    block = block->next_tile;
+  while (tile_group) {
+    render_tile(renderer, tile_group->tile);
+    tile_group = tile_group->next_tile;
   }
 }
 
-void tile_step(Block *block, Tile *tile)
+void tile_step(Tile_Group *tile_group, Tile *tile)
 {
   for (size_t i = 0; i < tile->count; ++i) {
-    if (tile->rects[i].y >= (SCREEN_HEIGHT - CELL_HEIGHT)) {
-      push_block(&block);
-      last_block = traverse_block(block);
-      generate_random_tile_set(last_block->tile);
+    if (tile->blocks[i].y >= (SCREEN_HEIGHT - CELL_HEIGHT)) {
+      push_tile_group(&tile_group);
+      last_tile = traverse_tile_group(tile_group);
+      generate_random_tile_set(last_tile->tile);
       return;
     }
   }
 
   for (size_t i = 0; i < tile->count; ++i) {
-     tile->rects[i].y += CELL_HEIGHT;
+     tile->blocks[i].y += CELL_HEIGHT;
   }
 }
 
@@ -249,46 +263,46 @@ void down_to_earth(Tile *tile)
 {
   int distance = SCREEN_HEIGHT;
   for (size_t i = 0; i < tile->count; ++i) {
-    if ((SCREEN_HEIGHT - tile->rects[i].y) < distance) {
-      distance = SCREEN_HEIGHT - tile->rects[i].y;
+    if ((SCREEN_HEIGHT - tile->blocks[i].y) < distance) {
+      distance = SCREEN_HEIGHT - tile->blocks[i].y;
     }
   }
 
   for (size_t i = 0; i < tile->count; ++i) {
-    tile->rects[i].y += distance - CELL_HEIGHT;
+    tile->blocks[i].y += distance - CELL_HEIGHT;
   }
 }
 
 void tile_move_left(Tile *tile)
 {
   for (size_t i = 0; i < tile->count; ++i) {
-    if (tile->rects[i].x <= 0) return;
+    if (tile->blocks[i].x <= 0) return;
   }
 
   for (size_t i = 0; i < tile->count; ++i) {
-    tile->rects[i].x -= CELL_WIDTH;
+    tile->blocks[i].x -= CELL_WIDTH;
   }
 }
 
 void tile_move_right(Tile *tile)
 {
   for (size_t i = 0; i < tile->count; ++i) {
-    if (tile->rects[i].x >= (SCREEN_WIDTH - CELL_WIDTH)) return;
+    if (tile->blocks[i].x >= (SCREEN_WIDTH - CELL_WIDTH)) return;
   }
 
   for (size_t i = 0; i < tile->count; ++i) {
-    tile->rects[i].x += CELL_WIDTH;
+    tile->blocks[i].x += CELL_WIDTH;
   }
 }
 
-Block *block = NULL;
+Tile_Group *tile_group = NULL;
 
 int main(int argc, char *argv[])
 {
   srand(time(0));
-  push_block(&block);
-  last_block = traverse_block(block);
-  generate_random_tile_set(last_block->tile);
+  push_tile_group(&tile_group);
+  last_tile = traverse_tile_group(tile_group);
+  generate_random_tile_set(last_tile->tile);
   
   secc(SDL_Init(SDL_INIT_VIDEO));
 
@@ -327,16 +341,21 @@ int main(int argc, char *argv[])
 	} break;
 
 	case SDLK_a: {
-	  last_block = traverse_block(block);
-	  tile_move_left(last_block->tile);
+	  last_tile = traverse_tile_group(tile_group);
+	  tile_move_left(last_tile->tile);
 	} break;
 	case SDLK_d: {
-	  last_block = traverse_block(block);
-	  tile_move_right(last_block->tile);
+	  last_tile = traverse_tile_group(tile_group);
+	  tile_move_right(last_tile->tile);
+	} break;
+	case SDLK_w: {
+	  last_tile = traverse_tile_group(tile_group);
+	  rotate_tile(last_tile->tile);
 	} break;
 	case SDLK_s: {
-	  last_block = traverse_block(block);
-	  down_to_earth(last_block->tile);
+	  last_tile = traverse_tile_group(tile_group);
+	  down_to_earth(last_tile->tile);
+	} break;
 	} break;
 	}
       } break;
@@ -345,18 +364,20 @@ int main(int argc, char *argv[])
 
     secc(SDL_SetRenderDrawColor(renderer, HEX_COLOR(BACKGROUND_COLOR)));
     secc(SDL_RenderClear(renderer));
+      secc(SDL_SetRenderDrawColor(renderer, HEX_COLOR(BACKGROUND_COLOR)));
+      secc(SDL_RenderClear(renderer));
 
-    render_grids(renderer);
-    render_tile(renderer, &boundary_tile);
+      render_grids(renderer);
+      render_tile(renderer, &boundary_tile);
     
-    render_block(renderer, block);
+      render_tile_group(renderer, tile_group);
     
-    SDL_RenderPresent(renderer);
+      SDL_RenderPresent(renderer);
 
-    if (SDL_GetTicks() - dt > 500) {
-      last_block = traverse_block(block);
-      tile_step(block, last_block->tile);
-      dt = SDL_GetTicks();
+      if (SDL_GetTicks() - dt > 300) {
+	last_tile = traverse_tile_group(tile_group);
+	tile_step(tile_group, last_tile->tile);
+	dt = SDL_GetTicks();
     }
   }
 

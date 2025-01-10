@@ -1,4 +1,5 @@
-# Tetrissy - Tetris Game based on Original Tetris 1985 Tile-matching puzzle video game
+# Tetrissy
+##Tetris Game based on Original Tetris 1985 Tile-matching puzzle video game
 
 ## Quick Start
 
