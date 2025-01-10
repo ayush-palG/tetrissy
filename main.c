@@ -318,6 +318,7 @@ int main(int argc, char *argv[])
   Uint32 dt = SDL_GetTicks();
 
   int quit = 0;
+  int is_stopped = 0;
   while (!quit) {
     SDL_Event event;
     
@@ -330,10 +331,10 @@ int main(int argc, char *argv[])
       case SDL_KEYDOWN: {
 	switch(event.key.keysym.sym) {
 	case SDLK_r: {
-	  //free_block(block);
-	  //push_block(&block);
-	  //last_block = traverse_block(block);
-	  //generate_random_tile_set(last_block->tile);
+	  //free_tile_group(tile_group);
+	  //push_tile_group(&tile_group);
+	  //last_tile_group = traverse_tile_group(tile_group);
+	  //generate_random_tile_set(last_tile_group->tile);
 	} break;
 
 	case SDLK_q: {
@@ -356,14 +357,16 @@ int main(int argc, char *argv[])
 	  last_tile = traverse_tile_group(tile_group);
 	  down_to_earth(last_tile->tile);
 	} break;
+
+	case SDLK_SPACE: {
+	  is_stopped = !is_stopped;
 	} break;
 	}
       } break;
       }
     }
 
-    secc(SDL_SetRenderDrawColor(renderer, HEX_COLOR(BACKGROUND_COLOR)));
-    secc(SDL_RenderClear(renderer));
+    if (!is_stopped) {
       secc(SDL_SetRenderDrawColor(renderer, HEX_COLOR(BACKGROUND_COLOR)));
       secc(SDL_RenderClear(renderer));
 
@@ -378,6 +381,7 @@ int main(int argc, char *argv[])
 	last_tile = traverse_tile_group(tile_group);
 	tile_step(tile_group, last_tile->tile);
 	dt = SDL_GetTicks();
+    }
     }
   }
 
