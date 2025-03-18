@@ -40,10 +40,10 @@ int main(void)
 	  add_tile(&tg);
 	  break;
 	case SDLK_a:
-	  tile_move_left(&tg);
+	  if (!is_tile_left_or_right(&tg)) tile_move_left(&tg);
 	  break;
 	case SDLK_d:
-	  tile_move_right(&tg);
+	  if (!is_tile_left_or_right(&tg)) tile_move_right(&tg);
 	  break;
 	}	    
       } break;
@@ -60,6 +60,7 @@ int main(void)
 
     if (SDL_GetTicks() - dt > 500) {
       tile_move_down(&tg);
+      if (is_tile_below(&tg)) add_tile(&tg);
       dt = SDL_GetTicks();
     }
   }

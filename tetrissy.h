@@ -72,6 +72,9 @@ void tile_move_left(Tile_Group *tg);
 void tile_move_right(Tile_Group *tg);
 void tile_move_down(Tile_Group *tg);
 void add_tile(Tile_Group *tg);
+Bool is_in_contact_with_tile(Tile *tile1, Tile *tile2);
+Bool is_tile_below(Tile_Group *tg);
+Bool is_tile_left_or_right(Tile_Group *tg);
 
 void render_grids(SDL_Renderer *renderer);
 void render_tiles(SDL_Renderer *renderer, const Tile_Group *tg);
@@ -153,8 +156,8 @@ void tile_move_down(Tile_Group *tg)
 void add_tile(Tile_Group *tg)
 {
   Color colors[] = {GREEN, ORANGE, YELLOW, ERIN, PURPLE, GRAY};
-  Coord pos = {.x = 40*random_st_range(3, 7), .y = 120};
-  size_t rand_num = random_st_range(3, 4);
+  Coord pos = {.x = 40*random_st_range(3, 7), .y = 80};
+  size_t rand_num = random_st_range(MIN_RECTS_IN_TILE, MAX_RECTS_IN_TILE);
 
   Tile tile = {0};
   tile.blocks = (SDL_Rect *) malloc(sizeof(SDL_Rect) * rand_num);
@@ -178,6 +181,47 @@ void add_tile(Tile_Group *tg)
 
   assert(tg->tiles_count < TILES_CAPACITY);
   tg->tiles[tg->tiles_count++] = tile;
+}
+
+Bool is_in_contact_with_tile(Tile *tile1, Tile *tile2)
+{
+  for (size_t i = 0; i < tile1->count; ++i) {
+    for (size_t j = 0; j < tile2->count; ++j) {
+      if (tile2->blocks[j].x - tile1->blocks[i].x <= 40) return 1;
+      if (tile2->blocks[j].y - tile1->blocks[i].y <= 40) return 1;
+    }
+  }
+  return 0;
+}
+
+Bool is_tile_below(Tile_Group *tg)
+{
+  Tile *tile = &(tg->tiles[tg->tiles_count-1]);
+  for (size_t i = 0; i < tg->tiles_count-1; ++i) {
+    for (size_t j = 0; j < tg->tiles[i].count; ++j) {
+      for (size_t k = 0; k < tile->count; ++k) {
+	if (tile->blocks[k].x == tg->tiles[i].blocks[j].x) {
+	  if (abs(tile->blocks[k].y - tg->tiles[i].blocks[j].y) <= CELL_HEIGHT) return 1;
+	}
+      }
+    }
+  }
+  return 0;
+}
+
+Bool is_tile_left_or_right(Tile_Group *tg)
+{
+  Tile *tile = &(tg->tiles[tg->tiles_count-1]);
+  for (size_t i = 0; i < tg->tiles_count-1; ++i) {
+    for (size_t j = 0; j < tg->tiles[i].count; ++j) {
+      for (size_t k = 0; k < tile->count; ++k) {
+	if (tile->blocks[k].y == tg->tiles[i].blocks[j].y) {
+	  if (abs(tile->blocks[k].x - tg->tiles[i].blocks[j].x) <= CELL_WIDTH) return 1;
+	}
+      }
+    }
+  }
+  return 0;
 }
 
 void render_grids(SDL_Renderer *renderer)
