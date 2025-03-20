@@ -37,14 +37,22 @@ int main(void)
 	  quit = true;
 	  break;
 	case SDLK_r:
+	  for (size_t i = 0; i < tg.tiles_count; ++i) {
+	      free(tg.tiles[i].blocks);
+	  }
 	  tg.tiles_count = 0;
 	  add_tile(&tg);
 	  break;
 	case SDLK_a:
-	  if (!is_tile_left_or_right(&tg)) tile_move_left(&tg);
+	  if (is_running) {
+	    if (!is_tile_left_or_right(&tg)) tile_move_left(&tg);
+	  }
 	  break;
 	case SDLK_d:
-	  if (!is_tile_left_or_right(&tg)) tile_move_right(&tg);
+	  if (is_running) {
+	    if (!is_tile_left_or_right(&tg)) tile_move_right(&tg);
+	  }
+	  break;
 	case SDLK_SPACE:
 	  is_running = (is_running == true) ? false : true;
 	  break;
