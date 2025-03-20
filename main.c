@@ -70,10 +70,11 @@ int main(void)
     
       SDL_RenderPresent(renderer);
 
-    if (SDL_GetTicks() - dt > 500) {
-      tile_move_down(&tg);
-      if (is_tile_below(&tg)) add_tile(&tg);
-      dt = SDL_GetTicks();
+      if (SDL_GetTicks() - dt > 300) {
+        add_new_tile_on_screen(&tg);
+	remove_tiles(&tg);
+	tiles_move_down(&tg);
+	dt = SDL_GetTicks();
       }
     }
   }
