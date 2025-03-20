@@ -19,6 +19,7 @@ int main(void)
 		   window, -1, SDL_RENDERER_ACCELERATED));
 
   Bool quit = false;
+  Bool is_running = true;
   uint32_t dt = SDL_GetTicks();
   add_tile(&tg);
   
@@ -44,24 +45,28 @@ int main(void)
 	  break;
 	case SDLK_d:
 	  if (!is_tile_left_or_right(&tg)) tile_move_right(&tg);
+	case SDLK_SPACE:
+	  is_running = (is_running == true) ? false : true;
 	  break;
 	}	    
       } break;
       }
     }
 
-    secc(SDL_SetRenderDrawColor(renderer, HEX_COLOR(BACKGROUND_COLOR)));
-    secc(SDL_RenderClear(renderer));
+    if (is_running) {
+      secc(SDL_SetRenderDrawColor(renderer, HEX_COLOR(BACKGROUND_COLOR)));
+      secc(SDL_RenderClear(renderer));
 
-    render_grids(renderer);
-    render_tiles(renderer, &tg);
+      render_grids(renderer);
+      render_tiles(renderer, &tg);
     
-    SDL_RenderPresent(renderer);
+      SDL_RenderPresent(renderer);
 
     if (SDL_GetTicks() - dt > 500) {
       tile_move_down(&tg);
       if (is_tile_below(&tg)) add_tile(&tg);
       dt = SDL_GetTicks();
+      }
     }
   }
 
