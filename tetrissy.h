@@ -75,6 +75,7 @@ Bool is_tile_below(Tile_Group *tg, Tile *tile);
 void tile_move_left(Tile_Group *tg);
 void tile_move_right(Tile_Group *tg);
 void tiles_move_down(Tile_Group *tg);
+void down_to_earth(Tile_Group *tg);
 
 void add_tile(Tile_Group *tg);
 void add_new_tile_on_screen(Tile_Group *tg);
@@ -197,6 +198,18 @@ void tiles_move_down(Tile_Group *tg)
     }
   }
 }
+
+void down_to_earth(Tile_Group *tg)
+{
+  Tile *tile = &(tg->tiles[tg->tiles_count-1]);
+  for (size_t i = 0; i < tile->count; ++i) {
+    while (!is_tile_below(tg, tile) && is_tile_on_bottom(tile) == false) {
+      for (size_t i = 0; i < tile->count; ++i) {
+	tile->blocks[i].y += CELL_HEIGHT;
+      }
+    }
+  }
+} 
 
 void add_tile(Tile_Group *tg)
 {

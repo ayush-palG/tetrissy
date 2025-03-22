@@ -56,6 +56,9 @@ int main(void)
 	case SDLK_SPACE:
 	  is_running = (is_running == true) ? false : true;
 	  break;
+	case SDLK_s:
+	  down_to_earth(&tg);
+	  break;
 	}	    
       } break;
       }
