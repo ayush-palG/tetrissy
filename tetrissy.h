@@ -79,8 +79,8 @@ void tiles_move_down(Tile_Group *tg);
 void add_tile(Tile_Group *tg);
 void add_new_tile_on_screen(Tile_Group *tg);
 
-void remove_block_from_tile(Tile *tile, size_t block_index)
-void remove_tile_blocks_from_column(Tile_Group *tg, size_t column);
+void remove_block_from_tile(Tile *tile, size_t block_index);
+void remove_tile_blocks_from_row(Tile_Group *tg, size_t row);
 void remove_tiles(Tile_Group *tg);
 
 void render_grids(SDL_Renderer *renderer);
@@ -251,12 +251,12 @@ void remove_block_from_tile(Tile *tile, size_t block_index)
   tile->count -= 1;
 }
 
-void remove_tile_blocks_from_column(Tile_Group *tg, size_t column)
+void remove_tile_blocks_from_row(Tile_Group *tg, size_t row)
 {
   for (size_t i = 0; i < tg->tiles_count-1; ++i) {
     for (size_t j = 0; j < tg->tiles[i].count; ++j) {
       int y = tg->tiles[i].blocks[j].y / CELL_HEIGHT;
-      if (y == (int) column) {
+      if (y == (int) row) {
 	// Remove the tile_block from the tile of the tile_group
 	remove_block_from_tile(&(tg->tiles[i]), j--);
       }
@@ -282,7 +282,7 @@ void remove_tiles(Tile_Group *tg)
     for (size_t x = 0; x < (size_t) BOARD_WIDTH; ++x) {
       if (tiled_cells[y*(int)BOARD_WIDTH + x] == 1) counter += 1;
     }
-    if (counter >= 10) remove_tile_blocks_from_column(tg, y);
+    if (counter >= 10) remove_tile_blocks_from_row(tg, y);
   }
 
   free(tiled_cells);
