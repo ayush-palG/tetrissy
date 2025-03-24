@@ -163,6 +163,16 @@ Bool is_tile_below(Tile_Group *tg, Tile *tile)
   return 0;
 }
 
+Bool is_game_over(Tile_Group *tg)
+{
+  for (size_t i = 0; i < tg->tiles_count-1; ++i) {
+    for (size_t j = 0; j < tg->tiles[i].count; ++j) {
+      if (tg->tiles[i].blocks[j].y == 0) return true;
+    }
+  }
+  return false;
+}
+
 void tile_move_left(Tile_Group *tg)
 {
   Tile *tile = &(tg->tiles[tg->tiles_count-1]);
@@ -214,7 +224,7 @@ void down_to_earth(Tile_Group *tg)
 void add_tile(Tile_Group *tg)
 {
   Color colors[] = {GREEN, ORANGE, YELLOW, ERIN, PURPLE, GRAY};
-  Coord pos = {.x = 40*random_st_range(3, 7), .y = 80};
+  Coord pos = {.x = 40*random_st_range(3, 7), .y = -80};
   size_t rand_num = random_st_range(MIN_RECTS_IN_TILE, MAX_RECTS_IN_TILE+1);
 
   Tile tile = {0};

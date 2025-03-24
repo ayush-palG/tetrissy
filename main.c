@@ -79,6 +79,11 @@ int main(void)
 	tiles_move_down(&tg);
 	dt = SDL_GetTicks();
       }
+
+      if (is_game_over(&tg) == true) {
+	printf("\nGAME OVER!\n");
+	quit = true;
+      }
     }
   }
 
