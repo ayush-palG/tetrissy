@@ -244,11 +244,8 @@ void add_tile(Tile_Group *tg)
 void add_new_tile_on_screen(Tile_Group *tg)
 {
   Tile *tile = &(tg->tiles[tg->tiles_count-1]);
-  for (size_t i = 0; i < tile->count; ++i) {
-    if ((tile->blocks[i].y >= (SCREEN_HEIGHT - CELL_HEIGHT)) || is_tile_below(tg, tile)) {
-      add_tile(tg);
-      return;
-    }
+  if ((is_tile_on_bottom(tile) == true) || is_tile_below(tg, tile)) {
+    add_tile(tg);
   }
 }
 
